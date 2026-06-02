@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ทบทวนทักษะ — ระบบส่วนหน้า Next.js</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #171b26;
+    --border: #2a2f3e;
+    --text: #e2e8f0;
+    --muted: #8892a4;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+
+  /* Layout */
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; flex-shrink: 0; background: var(--card); border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 20px 0; }
+  .main { flex: 1; padding: 40px 48px; max-width: 960px; }
+
+  /* Sidebar */
+  .sidebar-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--muted); padding: 0 16px 8px; text-transform: uppercase; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; border-left: 3px solid transparent; transition: all .15s; text-decoration: none; color: var(--muted); font-size: 13px; }
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,.04); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,.08); }
+  .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .nav-sep { border: none; border-top: 1px solid var(--border); margin: 10px 16px; }
+
+  /* Header */
+  .page-header { margin-bottom: 40px; }
+  .page-header h1 { font-size: 28px; font-weight: 700; color: var(--text); }
+  .page-header p { color: var(--muted); margin-top: 6px; font-size: 14px; }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  /* Skill Card */
+  .skill-section { margin-bottom: 48px; scroll-margin-top: 24px; }
+  .skill-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .skill-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; gap: 14px; }
+  .skill-num { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+  .skill-meta h2 { font-size: 18px; font-weight: 700; }
+  .skill-meta .skill-id { font-size: 11px; color: var(--muted); font-family: monospace; margin-top: 2px; }
+  .skill-body { padding: 24px; display: grid; gap: 20px; }
+
+  /* Sections inside card */
+  .info-block { }
+  .info-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .info-text { color: var(--text); line-height: 1.7; }
+  .trigger-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .trigger-tag { background: rgba(59,130,246,.12); color: #93c5fd; border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 3px 9px; font-size: 12px; font-family: monospace; }
+
+  /* Files table */
+  .files-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .files-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .files-table td { padding: 7px 10px; border-bottom: 1px solid rgba(42,47,62,.6); vertical-align: top; }
+  .files-table td:first-child { font-family: monospace; color: #93c5fd; white-space: nowrap; font-size: 12px; }
+  .files-table td:last-child { color: var(--muted); }
+  .folder-badge { background: rgba(139,92,246,.15); color: #a78bfa; border-radius: 4px; padding: 1px 6px; font-size: 11px; margin-right: 4px; }
+
+  /* Rules */
+  .rules-list { list-style: none; display: grid; gap: 6px; }
+  .rules-list li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
+  .rule-key { background: rgba(255,255,255,.06); color: var(--muted); font-family: monospace; font-size: 11px; padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+  .rule-desc { color: var(--text); }
+
+  /* Chain */
+  .chain-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .chain-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .chain-arrow { color: var(--muted); }
+  .chain-skill { background: rgba(59,130,246,.12); color: #93c5fd; border: 1px solid rgba(59,130,246,.2); border-radius: 6px; padding: 2px 8px; font-family: monospace; font-size: 12px; }
+
+  /* Stance pills */
+  .stance-list { display: grid; gap: 8px; }
+  .stance-item { background: rgba(255,255,255,.03); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+  .stance-item strong { color: var(--accent); }
+
+  /* Refuse block */
+  .refuse-list { list-style: none; display: grid; gap: 6px; }
+  .refuse-list li { display: flex; gap: 8px; font-size: 13px; }
+  .refuse-list li::before { content: "❌"; flex-shrink: 0; }
+
+  /* Phase table */
+  .phase-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .phase-table th { text-align: left; color: var(--muted); padding: 6px 12px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .phase-table td { padding: 8px 12px; border-bottom: 1px solid rgba(42,47,62,.5); vertical-align: top; }
+  .phase-table td:first-child { font-family: monospace; color: var(--yellow); }
+  .phase-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 700; margin-right: 4px; }
+
+  /* Divider */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } .main { padding: 24px 20px; } .sidebar { display: none; } }
+
+  /* Color helpers */
+  .c-blue   { background: rgba(59,130,246,.15); color: #60a5fa; }
+  .c-green  { background: rgba(34,197,94,.15);  color: #4ade80; }
+  .c-yellow { background: rgba(245,158,11,.15); color: #fbbf24; }
+  .c-purple { background: rgba(139,92,246,.15); color: #a78bfa; }
+  .c-red    { background: rgba(239,68,68,.15);  color: #f87171; }
+  .c-cyan   { background: rgba(6,182,212,.15);  color: #22d3ee; }
+  .c-pink   { background: rgba(236,72,153,.15); color: #f472b6; }
+  .c-orange { background: rgba(249,115,22,.15); color: #fb923c; }
+  .c-teal   { background: rgba(20,184,166,.15); color: #2dd4bf; }
+  .c-indigo { background: rgba(99,102,241,.15); color: #818cf8; }
+  .c-lime   { background: rgba(132,204,22,.15); color: #a3e635; }
+  .c-sky    { background: rgba(14,165,233,.15); color: #38bdf8; }
+
+  .tag { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; font-weight: 700; font-size: 12px; }
+
+  .scope-box { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #fca5a5; }
+  .scope-box strong { color: #f87171; display: block; margin-bottom: 4px; }
+
+  code { font-family: monospace; background: rgba(255,255,255,.06); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- SIDEBAR (แถบด้านข้าง) -->
+<nav class="sidebar">
+  <div class="sidebar-title">ทักษะพิเศษ</div>
+  <a class="nav-item" href="#start"><span class="nav-dot c-lime" style="background:#a3e635"></span>เริ่มต้นโครงการ (_start)</a>
+  <a class="nav-item" href="#verify"><span class="nav-dot c-teal" style="background:#2dd4bf"></span>ตรวจสอบความครบถ้วน (_verify)</a>
+  <hr class="nav-sep"/>
+  <div class="sidebar-title">ทักษะหลัก</div>
+  <a class="nav-item" href="#s00"><span class="nav-dot" style="background:#60a5fa"></span>00 ข้อมูลจำเพาะความต้องการ</a>
+  <a class="nav-item" href="#s01"><span class="nav-dot" style="background:#4ade80"></span>01 การตั้งค่าและการกำหนดค่า</a>
+  <a class="nav-item" href="#s02"><span class="nav-dot" style="background:#fbbf24"></span>02 โครงสร้างโฟลเดอร์และประเภท</a>
+  <a class="nav-item" href="#s03"><span class="nav-dot" style="background:#a78bfa"></span>03 การแสดงผลของ Next.js</a>
+  <a class="nav-item" href="#s04"><span class="nav-dot" style="background:#f87171"></span>04 การใช้งาน React Hooks</a>
+  <a class="nav-item" href="#s05"><span class="nav-dot" style="background:#22d3ee"></span>05 การใช้งาน TypeScript และ Zod</a>
+  <a class="nav-item" href="#s06"><span class="nav-dot" style="background:#f472b6"></span>06 เส้นทาง API และการดึงข้อมูล</a>
+  <a class="nav-item" href="#s07"><span class="nav-dot" style="background:#fb923c"></span>07 การจัดการสถานะและข้อมูล</a>
+  <a class="nav-item" href="#s08"><span class="nav-dot" style="background:#818cf8"></span>08 การยืนยันตัวตนและการรักษาความปลอดภัย</a>
+  <a class="nav-item" href="#s09"><span class="nav-dot" style="background:#38bdf8"></span>09 การกำหนดค่าสภาพแวดล้อม</a>
+  <a class="nav-item" href="#s10"><span class="nav-dot" style="background:#2dd4bf"></span>10 ประสิทธิภาพและขนาดมัดข้อมูล</a>
+</nav>
+
+<!-- MAIN (เนื้อหาหลัก) -->
+<main class="main">
+
+<div class="page-header">
+  <h1>การทบทวนทักษะ (Skills Review)</h1>
+  <p>คู่มืออ้างอิงทักษะทั้งหมดในระบบ Next.js + TypeScript Frontend — หน้าที่, ตัวกระตุ้น (Trigger), ไฟล์, และกฎสำคัญ</p>
+  <div class="badge-row">
+    <span class="badge c-blue">Next.js 15 App Router</span>
+    <span class="badge c-cyan">TypeScript แบบเข้มงวด (Strict)</span>
+    <span class="badge c-green">Tailwind CSS v4</span>
+    <span class="badge c-purple">เฉพาะส่วนหน้า (Frontend Only)</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ _start -->
+<section class="skill-section" id="start">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-lime">_S</div>
+      <div class="skill-meta">
+        <h2>_start — ผู้ดูแลระบบหลัก (Master Orchestrator)</h2>
+        <div class="skill-id">start-all-project</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">สร้างโครงการ Next.js + TypeScript แบบครบวงจร ตั้งแต่ขั้นตอนการรับความต้องการ (Requirement) ไปจนถึงชุดโค้ดที่พร้อมใช้งานจริง (Production-ready) โดยเรียกใช้ทักษะลำดับที่ 00–10 ตามแผนผังขั้นตอน (Phase Map) ที่กำหนดไว้ ทำหน้าที่เป็นผู้ควบคุมระบบและจะไม่ตัดสินใจในส่วนของตรรกะทางธุรกิจ (Business Logic) ด้วยตนเอง</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">start-all-project</span>
+          <span class="trigger-tag">สร้าง project ให้ครบ</span>
+          <span class="trigger-tag">ทำ project ให้จบ</span>
+          <span class="trigger-tag">build project from requirement</span>
+          <span class="trigger-tag">ทำครบทุกอย่าง</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">แผนผังขั้นตอน (Phase Map - ต้องทำตามลำดับ ห้ามข้ามขั้นตอน)</div>
+        <table class="phase-table">
+          <thead><tr><th>ขั้นตอน</th><th>ทักษะที่ใช้</th><th>จุดประสงค์</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>REQ</td><td>วิเคราะห์ความต้องการ → ข้อข้อมูลจำเพาะส่วนหน้า (Frontend Spec)</td></tr>
+            <tr><td>1</td><td>01</td><td>ติดตั้งระบบ + ไฟล์กำหนดค่า (Config) + CLAUDE.md</td></tr>
+            <tr><td>2</td><td>01+04</td><td>โครงสร้างโฟลเดอร์ + การตั้งค่า TypeScript</td></tr>
+            <tr><td>3</td><td>08</td><td>กำหนดค่าสภาพแวดล้อม (Environment) + การตรวจสอบด้วย Zod</td></tr>
+            <tr><td>4</td><td>07</td><td>ระบบยืนยันตัวตนและความปลอดภัย (เฉพาะในกรณีที่ข้อกำหนดระบุให้มีการเข้าสู่ระบบ)</td></tr>
+            <tr><td>5</td><td>02</td><td>โครงสร้างหลักของ Next.js (การแสดงผล, การทำแคช)</td></tr>
+            <tr><td>5b</td><td>02</td><td>สร้างหน้าเพจ (Page) ทั้งหมดตามข้อข้อมูลจำเพาะ (บังคับ)</td></tr>
+            <tr><td>5c</td><td>01+03</td><td>สร้างส่วนประกอบ (Component) ทั้งหมดตามข้อข้อมูลจำเพาะ (บังคับ)</td></tr>
+            <tr><td>6</td><td>05+06</td><td>เส้นทาง API (API Routes) + การจัดการสถานะ (State Management)</td></tr>
+            <tr><td>7</td><td>03</td><td>ตรวจสอบรูปแบบการเขียน React (React Patterns Audit)</td></tr>
+            <tr><td>8</td><td>09</td><td>ปรับแต่งประสิทธิภาพให้เหมาะสมสูงสุด (Performance Optimization)</td></tr>
+            <tr><td>9</td><td>_verify</td><td>ตรวจสอบความครบถ้วนสมบูรณ์ของทุกไฟล์ (บังคับ)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ด่านตรวจ</span><span class="rule-desc">ทุกขั้นตอนมีด่านตรวจ (Gate) — ต้องผ่านการตรวจสอบก่อนจึงจะไปขั้นตอนถัดไปได้ ห้ามข้ามเด็ดขาด</span></li>
+          <li><span class="rule-key">ห้ามใช้ฐานข้อมูล</span><span class="rule-desc">ห้ามสร้างไฟล์ที่มีการเรียกใช้งาน prisma.* หรือ mongoose.* — รองรับเฉพาะส่วนหน้าเท่านั้น (ยกเว้นโครงการที่เป็น Full-stack)</span></li>
+          <li><span class="rule-key">บันทึกประวัติ</span><span class="rule-desc">เขียนบันทึกการทำงานลงใน LOG.md ทันทีหลังจากเสร็จสิ้นแต่ละการกระทำ — ห้ามรวบรวมไปบันทึกทีหลัง</span></li>
+          <li><span class="rule-key">ห้ามใส่ไฟล์เปล่า</span><span class="rule-desc">ห้ามสร้างไฟล์ที่ส่งกลับค่าว่างหรือ return null โดยที่ไม่มีโครงสร้างการทำงานจริงอยู่ภายใน</span></li>
+        </ul>
+      </div>
+      <div class="scope-box">
+        <strong>⚠️ ขอบเขตงาน: เฉพาะส่วนหน้า (Frontend Only)</strong>
+        ทุกทักษะในระบบนี้จะมุ่งเน้นเฉพาะ Next.js + TypeScript + Tailwind เท่านั้น — ห้ามกำหนดโครงสร้างฐานข้อมูล (Database Schema), ตรรกะฝั่งหลังบ้าน (Backend Logic) หรือโครงสร้างพื้นฐานของเซิร์ฟเวอร์ (Server Infrastructure)
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ _verify -->
+<section class="skill-section" id="verify">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-teal">_V</div>
+      <div class="skill-meta">
+        <h2>_verify — ผู้ตรวจสอบความครบถ้วนสมบูรณ์ (Completeness Auditor)</h2>
+        <div class="skill-id">verify-completeness</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">ทำหน้าที่เป็น "ผู้ตรวจสอบจากภายนอก" — อ่านข้อข้อมูลจำเพาะ (Spec) แล้วตรวจเช็คว่าไฟล์ทั้งหมดที่ควรจะมีนั้นถูกสร้างขึ้นจริงหรือไม่ หากพบช่องโหว่หรือส่วนที่ขาดหายไป → จะทำการสร้างไฟล์นั้นขึ้นมาทันที ไม่ใช่เพียงแค่รายงานผลอย่างเดียว และจะถูกรันเป็นขั้นตอนสุดท้ายเสมอ (ขั้นตอนที่ 9)</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">verify</span>
+          <span class="trigger-tag">ตรวจสอบ</span>
+          <span class="trigger-tag">ครบหรือยัง</span>
+          <span class="trigger-tag">check completeness</span>
+          <span class="trigger-tag">มีอะไรขาดไหม</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ลำดับขั้นตอนการทำงาน (ห้ามข้ามขั้นตอน)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ขั้นตอนที่ 1</span><span class="rule-desc">อ่านข้อข้อมูลจำเพาะจากไฟล์ CLAUDE.md — ค้นหารายการหน้าเพจ (Pages), ส่วนประกอบ (Components), ปลายทาง API (API Endpoints), สถานะ (State), และระบบสิทธิ์ (Auth)</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 2</span><span class="rule-desc">สร้างรายการไฟล์ที่คาดว่าต้องมี (Expected File List) แยกตามหมวดหมู่อย่างครบถ้วน</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 3</span><span class="rule-desc">แกะรอยตรวจสอบทุกไฟล์ — ตรวจสอบทั้งการมีอยู่ของไฟล์และเนื้อหาภายใน (✅ สมบูรณ์ / ⚠️ เป็นไฟล์โครงร่างเปล่า / ❌ ขาดหายไป)</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 3b</span><span class="rule-desc">สแกนการนำเข้าไฟล์ (Import Scan) — สแกนการคำสั่ง import ในไฟล์ page.tsx ทุกไฟล์ เพื่อค้นหาไฟล์ที่อาจจะตกหล่นไปจากรายการที่คาดไว้</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 4</span><span class="rule-desc">แสดงรายงานความครบถ้วนสมบูรณ์ (Completeness Report) พร้อมตารางสรุปผล</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 5</span><span class="rule-desc">แก้ไขอัตโนมัติ (Auto-Fix) — ดำเนินการสร้างไฟล์ที่ขาดหายไปในทันที โดยไม่ต้องรอให้ผู้ใช้งานสั่งการ</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 6</span><span class="rule-desc">คำตัดสินสุดท้าย (Final Verdict) — แสดงสถานะ ผ่าน ✅ หรือ ไม่ผ่าน ❌</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 00 -->
+<section class="skill-section" id="s00">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-blue">00</div>
+      <div class="skill-meta">
+        <h2>req-spec — นักวิเคราะห์ความต้องการ (Requirements Analyzer)</h2>
+        <div class="skill-id">00-req-spec</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">แปลงความต้องการระดับคร่าว ๆ ให้กลายเป็นข้อข้อมูลจำเพาะส่วนหน้า (Frontend Spec) ที่มีความละเอียดและชัดเจนเพียงพอที่จะเริ่มเขียนโค้ด Next.js ได้ทันทีโดยไม่ต้องคาดเดา ทำหน้าที่เป็น "นักสืบ" คอยค้นหาช่องโหว่หรือจุดที่ไม่ชัดเจนในข้อกำหนดก่อนที่จะเริ่มกระบวนการสร้างจริง</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">ลูกค้าส่ง requirement มา</span>
+          <span class="trigger-tag">มี spec ใหม่</span>
+          <span class="trigger-tag">analyze requirement</span>
+          <span class="trigger-tag">วิเคราะห์ frontend</span>
+          <span class="trigger-tag">มี project ใหม่</span>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="info-block">
+          <div class="info-label">ขอบเขตงานที่ทำได้</div>
+          <ul class="rules-list">
+            <li><span class="rule-desc">กำหนดหน้าเพจและเส้นทาง (Routes) ทั้งหมด</span></li>
+            <li><span class="rule-desc">ระบุส่วนประกอบ (Components) ที่จำเป็นต้องสร้าง</span></li>
+            <li><span class="rule-desc">วางแผนการจัดการสถานะ (State management)</span></li>
+            <li><span class="rule-desc">กำหนดพฤติกรรมและการตอบสนองของ UI/UX</span></li>
+            <li><span class="rule-desc">ออกแบบข้อตกลงของ API (API Contract - เฉพาะส่วนเชื่อมต่ออินเทอร์เฟซเท่านั้น)</span></li>
+            <li><span class="rule-desc">วางลำดับขั้นตอนระบบสิทธิ์ (Auth Flow) ฝั่งส่วนหน้า</span></li>
+          </ul>
+        </div>
+        <div class="info-block">
+          <div class="info-label">นอกเหนือขอบเขตงาน (ห้ามทำ)</div>
+          <ul class="rules-list">
+            <li><span class="rule-desc">การออกแบบโครงสร้างฐานข้อมูล (Database Schema)</span></li>
+            <li><span class="rule-desc">ตรรกะทางธุรกิจฝั่งหลังบ้าน (Backend Business Logic)</span></li>
+            <li><span class="rule-desc">โครงสร้างพื้นฐานของเซิร์ฟเวอร์ (Server Infrastructure)</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ขั้นตอนผลลัพธ์ (Output Phases)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ขั้นตอนที่ 1</span><span class="rule-desc">รับข้อมูลและจำแนกประเภท (Intake & Classify) — อ่านความต้องการและจัดหมวดหมู่ประเภทของโครงการ</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 2</span><span class="rule-desc">วิเคราะห์ช่องโหว่ (Gap Analysis) — ระดับความรุนแรง 🔴 จุดติดขัดหลัก / 🟡 เรื่องสำคัญ / 🟢 เรื่องเล็กน้อย</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 3</span><span class="rule-desc">สร้างข้อข้อมูลจำเพาะส่วนหน้า (Generate Frontend Spec) ให้ครบถ้วนทุกหมวดหมู่</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 4</span><span class="rule-desc">รายงานจุดที่คลุมเครือ (Ambiguity Report) พร้อมทั้งข้อเสนอแนะและแนวทางคำตอบ</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 5</span><span class="rule-desc">ส่งไม้ต่อ (Handoff) → ไปยังทักษะลำดับที่ 01 (setup-config)</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/question-bank.md</td><td>ใช้ดึงชุดคำถามที่เหมาะสมตามประเภทของโครงการ</td></tr>
+            <tr><td>references/decision-defaults.md</td><td>ใช้ค่าเริ่มต้น (Default) เหล่านี้ในกรณีที่ลูกค้าไม่ได้ระบุคำตอบกลับมา</td></tr>
+            <tr><td>bad-patterns/assumption-traps.md</td><td>ใช้เพื่อป้องกันข้อผิดพลาดจากการด่วนสรุปหรือคาดเดาไปเอง</td></tr>
+            <tr><td>templates/spec-output.md</td><td>ใช้สำหรับสร้างเอกสารข้อมูลจำเพาะทางเทคนิค (Technical Spec Document)</td></tr>
+            <tr><td>templates/ambiguity-checklist.md</td><td>ใช้สร้างรายการจุดที่คลุมเครือเพื่อส่งต่อให้ลูกค้าตรวจสอบ</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 01 -->
+<section class="skill-section" id="s01">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-green">01</div>
+      <div class="skill-meta">
+        <h2>setup-config — ผู้ตั้งค่าระบบ (Project Setup)</h2>
+        <div class="skill-id">01-setup-config</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">วางรากฐานโครงสร้างของโครงการ Next.js + TypeScript ครบถ้วนทุกกระบวนการ ตั้งแต่การติดตั้งแพ็คเกจเสริม (Dependencies), การจัดทำไฟล์กำหนดค่าต่าง ๆ, การวางโครงสร้างโฟลเดอร์, การเตรียมไฟล์โครงร่างมาตรฐาน (Boilerplate) ไปจนถึงการสร้างไฟล์ CLAUDE.md ทำหน้าที่เป็น "ผู้ติดตั้งระบบ" ไม่ใช่นักออกแบบ</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">เริ่มต้น project</span>
+          <span class="trigger-tag">setup project</span>
+          <span class="trigger-tag">boilerplate</span>
+          <span class="trigger-tag">scaffold</span>
+          <span class="trigger-tag">init project</span>
+          <span class="trigger-tag">create next app</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ขั้นตอนผลลัพธ์ (Output Phases)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ขั้นตอนที่ 1</span><span class="rule-desc">รันคำสั่งติดตั้ง (Install Commands) ที่ระบุไว้ในไฟล์ dependencies.md</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 2</span><span class="rule-desc">สร้างไฟล์กำหนดค่าพื้นฐาน (next.config.js, eslint, tailwind, postcss, .gitignore)</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 3</span><span class="rule-desc">ขึ้นโครงโฟลเดอร์ (Scaffold) พร้อมกับตั้งค่า tsconfig</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 4</span><span class="rule-desc">สร้างไฟล์โครงร่างมาตรฐาน (env.ts, utils.ts, types, layout.tsx)</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 5</span><span class="rule-desc">จัดทำไฟล์คู่มือระบบ CLAUDE.md</span></li>
+          <li><span class="rule-key">ขั้นตอนที่ 6</span><span class="rule-desc">ตรวจสอบความถูกต้องด้วยคำสั่ง: npm run dev / build / tsc / lint</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/dependencies.md</td><td>รวมคำสั่งติดตั้งทั้งหมดที่จำเป็น</td></tr>
+            <tr><td>references/project-checklist.md</td><td>รายการตรวจสอบความเรียบร้อยเพื่อกันลืมในทุกขั้นตอนการทำงาน</td></tr>
+            <tr><td>bad-patterns/setup-mistakes.md</td><td>ใช้ตรวจสอบข้อผิดพลาดที่ควรระวังก่อนเริ่มสร้างไฟล์กำหนดค่า</td></tr>
+            <tr><td>templates/config-files/*.md</td><td>แม่แบบโครงสร้างสำหรับการสร้างไฟล์กำหนดค่าแต่ละไฟล์</td></tr>
+            <tr><td>templates/boilerplate/*.md</td><td>แม่แบบสำหรับการสร้างไฟล์โครงร่างมาตรฐาน (Boilerplate Files)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">เกณฑ์การตรวจสอบเพื่อผ่านขั้นตอน (ต้องผ่านครบทุกข้อ)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">✓</span><span class="rule-desc">คำสั่ง <code>npm run dev</code> → สามารถรันขึ้น localhost:3000 ได้โดยไม่มีข้อผิดพลาด (Error)</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">คำสั่ง <code>npm run build</code> → ดำเนินการสร้างไฟล์สำเร็จและไม่มีข้อผิดพลาด</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">คำสั่ง <code>npx tsc --noEmit</code> → ตรวจสอบไทป์แล้วพบข้อผิดพลาดเป็น 0 (0 errors)</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">คำสั่ง <code>git status</code> → ไฟล์ความลับระบบ .env จะต้องไม่อยู่ในรายการไฟล์ที่ถูกติดตาม (Tracked Files)</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 02 -->
+<section class="skill-section" id="s02">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-yellow">02</div>
+      <div class="skill-meta">
+        <h2>folder-types — ผู้ออกแบบโครงสร้างสถาปัตยกรรม (Structure & Architecture)</h2>
+        <div class="skill-id">02-folder-types</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">กำหนดมาตรฐานโครงสร้างโฟลเดอร์, ระบบนามแฝงของเส้นทาง (Path Alias), และระเบียบข้อบังคับในการจัดหมวดหมู่ส่วนประกอบ (Component) สำหรับระบบ Next.js App Router ทำหน้าที่เป็น "สถาปนิกซอฟต์แวร์" ที่จะท้าทายและตรวจสอบความเหมาะสมของโครงสร้างก่อนอนุมัติใช้งานจริง</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">วางไฟล์ที่ไหนดี</span>
+          <span class="trigger-tag">โครงสร้าง project</span>
+          <span class="trigger-tag">แยก component ยังไง</span>
+          <span class="trigger-tag">import path ยาวมาก</span>
+          <span class="trigger-tag">folder structure</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">โครงสร้างโฟลเดอร์มาตรฐาน (ระดับราก - Root Level, โดยไม่มีโฟลเดอร์ src/)</div>
+        <table class="files-table">
+          <thead><tr><th>โฟลเดอร์</th><th>สิ่งที่ต้องจัดเก็บภายใน</th></tr></thead>
+          <tbody>
+            <tr><td>app/</td><td>จัดเก็บเฉพาะไฟล์ระบบเส้นทางเท่านั้น (เช่น page.tsx, layout.tsx, route.ts)</td></tr>
+            <tr><td>components/</td><td>จัดเก็บส่วนประกอบทั้งหมด — แยกประเภทฝั่งผู้ใช้งานด้วยการลงท้ายชื่อไฟล์ด้วย *Client.tsx</td></tr>
+            <tr><td>lib/</td><td>จัดเก็บไฟล์ฟังก์ชันส่วนกลาง เช่น auth.ts, db.ts, env.ts, utils.ts, mockData.ts</td></tr>
+            <tr><td>models/</td><td>จัดเก็บโครงสร้าง Mongoose models (เฉพาะในโครงการที่เป็น Full-stack เท่านั้น)</td></tr>
+            <tr><td>types/</td><td>ไฟล์ index.ts — สำหรับรวบรวมอินเทอร์เฟซ (Interface) และไทป์ทั้งหมดไว้ในไฟล์เดียว</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">รูปแบบการจัดการส่วนประกอบ (Component Pattern)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">*Client.tsx</span><span class="rule-desc">จำเป็นต้องระบุคำสั่ง <code>'use client'</code> ไว้ที่บรรทัดแรกสุดของไฟล์ — สำหรับส่วนประกอบที่มีการใช้ useState/useEffect หรือเข้าถึง Browser API</span></li>
+          <li><span class="rule-key">*.tsx</span><span class="rule-desc">ปลอดภัยสำหรับการทำงานฝั่งเซิร์ฟเวอร์ (Server-safe) — ทำหน้าที่รับค่า Props เพื่อนำไปแสดงผลเพียงอย่างเดียว โดยไม่ต้องใส่ 'use client'</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ระบบนามแฝงของเส้นทาง (Path Alias ในไฟล์ tsconfig)</div>
+        <div class="info-text"><code>"@/*": ["./*"]</code> — แผนผังอ้างอิงตรงไปยังโฟลเดอร์ราก (Root) โดยไม่มีการผ่านโฟลเดอร์ src/<br/>ตัวอย่างรูปแบบการใช้งาน: <code>import { cn } from '@/lib/utils'</code></div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">รูปแบบที่ไม่พึงประสงค์และพบบ่อย (Anti-patterns)</div>
+        <ul class="refuse-list">
+          <li>มีไฟล์ส่วนประกอบ (Component) ปะปนกระจายอยู่ภายในโฟลเดอร์ app/</li>
+          <li>การนำเข้าไฟล์รูปแบบอ้างอิงสัมพันธ์ (Relative Import) ที่มีความลึกเกินกว่า 2 ชั้น (เช่น ../../../../...)</li>
+          <li>การเขียนนิยามประเภทข้อมูล (Type Definitions) กระจัดกระจายอยู่ทั่วไป แทนที่จะรวมไว้ที่โฟลเดอร์ types/index.ts</li>
+          <li>การใช้คำสั่ง 'use client' ครอบคลุมไฟล์โครงร่างหลัก (Layout) หรือหน้าเพจ (Page) ทั้งหมดโดยไม่จำเป็น</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 03 -->
+<section class="skill-section" id="s03">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-purple">03</div>
+      <div class="skill-meta">
+        <h2>nextjs-render — ระบบจัดการการแสดงผล Next.js (Next.js App Router)</h2>
+        <div class="skill-id">03-nextjs-render</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">ดูแลระบบภายในของ Next.js App Router ทั้งหมด เช่น ระบบแคช (Caching), การอัปเดตข้อมูลแคช (Revalidation), ปัญหาการประสานข้อมูลฝั่งผู้ใช้ (Hydration Error), ความแตกต่างระหว่างการแสดงผลแบบคงที่และแบบไดนามิก (Static vs Dynamic Rendering), ระบบกรองคำขอ (Middleware), ข้อตกลงการตั้งชื่อเส้นทาง, ตลอดจนการใช้คอมโพเนนต์ next/image และ next/font ทำหน้าที่ "แกะรอยวงจรชีวิตคำขอ (Request Lifecycle)" ก่อนเริ่มทำการแก้ไขปัญหา</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">cache ไม่ update</span>
+          <span class="trigger-tag">hydration error</span>
+          <span class="trigger-tag">ข้อมูลเก่า</span>
+          <span class="trigger-tag">middleware</span>
+          <span class="trigger-tag">revalidatePath</span>
+          <span class="trigger-tag">static rendering</span>
+          <span class="trigger-tag">next/image</span>
+          <span class="trigger-tag">loading.tsx</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ชั้นระบบแคช (Cache Layers - จำเป็นต้องระบุชั้นที่มีปัญหาให้ได้ก่อนลงมือแก้ไข)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ชั้นที่ 1</span><span class="rule-desc">Request Memoization — ป้องกันการดึงข้อมูลซ้ำซ้อน (Dedup Fetch) ภายในรอบการแสดงผลเดียวกัน</span></li>
+          <li><span class="rule-key">ชั้นที่ 2</span><span class="rule-desc">Data Cache — ระบบแคชผลลัพธ์การดึงข้อมูลของ Next.js (สามารถแก้ไขปัญหาได้ด้วยคำสั่ง revalidateTag หรือ no-store)</span></li>
+          <li><span class="rule-key">ชั้นที่ 3</span><span class="rule-desc">Full Route Cache — การทำแคชไฟล์ HTML ของเส้นทางที่เป็นแบบคงที่ (Static Route)</span></li>
+          <li><span class="rule-key">ชั้นที่ 4</span><span class="rule-desc">Router Cache — ระบบแคชฝั่งเบราว์เซอร์เพื่อช่วยในการเปลี่ยนหน้าเพจได้อย่างรวดเร็ว</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/caching-layers.md</td><td>ใช้เมื่อพบปัญหาเกี่ยวกับแคช, การอัปเดตข้อมูล หรือกรณีข้อมูลไม่เป็นปัจจุบัน</td></tr>
+            <tr><td>references/rendering-modes.md</td><td>อ้างอิงสถาปัตยกรรมแบบคงที่เทียบกับไดนามิก และระบบ ISR</td></tr>
+            <tr><td>references/route-conventions.md</td><td>ข้อตกลงการใช้งานไฟล์รูปแบบพิเศษ เช่น loading.tsx, error.tsx, not-found.tsx</td></tr>
+            <tr><td>references/middleware.md</td><td>การป้องกันการเข้าถึงเส้นทาง (Route Protection) และการกำหนดค่าคำสั่งจับคู่ (Matcher)</td></tr>
+            <tr><td>references/next-image-font.md</td><td>แนวทางการใช้งาน next/image, next/font และการปรับปรุงค่า LCP ให้ดีขึ้น</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">วิเคราะห์ชั้นแคชก่อน</span><span class="rule-desc">ต้องระบุชั้นของระบบแคชที่มีปัญหาให้ชัดเจนก่อนเสมอ — ห้ามนำเสนอแนวทางการแก้ไขโดยที่ยังไม่ทราบว่าปัญหาเกิดขึ้นที่ชั้นใด</span></li>
+          <li><span class="rule-key">ห้ามใช้ไคลเอนต์พร่ำเพรื่อ</span><span class="rule-desc">ห้ามแนะนำให้ใส่คำสั่ง 'use client' ครอบคลุมไปทั้งไฟล์โครงร่าง (Layout) หรือไฟล์หน้าเพจทั้งหมด</span></li>
+          <li><span class="rule-key">เซิร์ฟเวอร์เป็นหลัก</span><span class="rule-desc">กำหนดให้คอมโพเนนต์เริ่มต้นเป็น Server Component อยู่เสมอ</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 04 -->
+<section class="skill-section" id="s04">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-red">04</div>
+      <div class="skill-meta">
+        <h2>react-hooks — รูปแบบและโครงสร้าง React (React Patterns)</h2>
+        <div class="skill-id">04-react-hooks</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">ควบคุมและจัดการการใช้งาน React hooks และรูปแบบส่วนประกอบอย่างถูกต้อง: การจัดการตัวแปรอ้างอิงของ useEffect (Dependencies), ปัญหาฟังก์ชันจำค่าตัวแปรเก่า (Stale Closure), ปัญหาการเรนเดอร์ซ้ำซ้อนโดยไม่จำเป็น (Unnecessary Re-render), การใช้ useCallback/useMemo และการจัดการ Context ทำหน้าที่เป็น "ผู้จับคู่รูปแบบปัญหา" — จำเป็นต้องระบุรูปแบบโครงสร้างที่มีปัญหาก่อนเสนอแนวทางแก้ไข</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">useEffect loop</span>
+          <span class="trigger-tag">infinite loop</span>
+          <span class="trigger-tag">stale closure</span>
+          <span class="trigger-tag">dependency array</span>
+          <span class="trigger-tag">useState vs useRef</span>
+          <span class="trigger-tag">re-render มากเกิน</span>
+          <span class="trigger-tag">memory leak</span>
+          <span class="trigger-tag">useCallback</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">รูปแบบปัญหาทั่วไปที่ต้องระบุให้ชัดเจนก่อนทำการแก้ไข</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">Stale Closure</span><span class="rule-desc">ฟังก์ชันเรียกใช้งานค่าสถานะ (State) หรือคุณสมบัติ (Prop) ตัวเก่าภายในคำสั่ง Callback หรือ useEffect</span></li>
+          <li><span class="rule-key">Infinite Loop</span><span class="rule-desc">มีการใส่วัตถุ (Object) หรืออาร์เรย์ (Array) ไว้ในกล่องตัวแปรอ้างอิงของ useEffect ทำให้อ้างอิงตำแหน่งหน่วยความจำใหม่ทุกครั้งที่เกิดการเรนเดอร์</span></li>
+          <li><span class="rule-key">การเรนเดอร์ซ้ำซ้อน</span><span class="rule-desc">การที่ส่วนประกอบหลัก (Parent Component) เกิดการเรนเดอร์ใหม่ ส่งผลให้ส่วนประกอบย่อย (Child Component) ต้องเรนเดอร์ซ้ำตามไปด้วยโดยไม่มีความจำเป็น</span></li>
+          <li><span class="rule-key">ขาดการคืนหน่วยความจำ</span><span class="rule-desc">การใช้งาน useEffect ที่มีการติดตามข้อมูล (Subscription) หรือตัวนับเวลา (Timer) แต่ไม่ได้เขียนฟังก์ชันล้างค่าข้อมูล (Cleanup Function) รองรับไว้</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/useeffect-rules.md</td><td>กฎการใช้งาน useEffect, อาร์เรย์ตัวแปรอ้างอิง และฟังก์ชันเคลียร์หน่วยความจำ</td></tr>
+            <tr><td>references/state-vs-ref.md</td><td>เปรียบเทียบการเลือกใช้งานระหว่าง useState และ useRef</td></tr>
+            <tr><td>references/memo-callback.md</td><td>แนวทางการใช้ useMemo, useCallback และการแก้ปัญหาการเรนเดอร์ซ้ำ</td></tr>
+            <tr><td>references/context-pattern.md</td><td>การแก้ไขปัญหาการส่งต่อข้อมูลผ่านหลายชั้น (Prop Drilling) ด้วยระบบ Context</td></tr>
+            <tr><td>bad-patterns/useeffect-mistakes.md</td><td>ตัวอย่างข้อผิดพลาดที่ทำให้เกิดลูปไม่รู้จบ (Infinite Loop) และฟังก์ชันจำค่าเก่า</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">วิเคราะห์รูปแบบก่อน</span><span class="rule-desc">ต้องระบุรูปแบบโครงสร้างปัญหาให้ชัดเจนก่อนเสมอ — ห้ามเสนอแนวทางแก้ไขโดยที่ยังไม่แน่ใจว่าแท้จริงแล้วปัญหาคืออะไร</span></li>
+          <li><span class="rule-key">ห้ามด่วนปรับแต่ง</span><span class="rule-desc">ห้ามแนะนำให้ใช้คำสั่ง useMemo หรือ useCallback โดยที่ไม่มีหลักฐานเชิงประจักษ์ว่าเกิดปัญหาจากการเรนเดอร์ซ้ำซ้อนจริง</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 05 -->
+<section class="skill-section" id="s05">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-cyan">05</div>
+      <div class="skill-meta">
+        <h2>ts-zod — ระบบชนิดข้อมูลและการตรวจสอบโครงสร้าง (TypeScript & Zod)</h2>
+        <div class="skill-id">05-ts-zod</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">จัดการโครงสร้างคำนิยามประเภทข้อมูลของ TypeScript, ระบบตรวจสอบความถูกต้องของข้อมูลขณะทำงานจริงด้วย Zod (Runtime Validation), ไฟล์กำหนดค่า tsconfig, ชนิดข้อมูลแบบทั่วไป (Generic Types) และชนิดข้อมูลเครื่องมือช่วยเหลือ (Utility Types) โดยจำเป็นต้องแยกความแตกต่างระหว่างช่วงเวลาตรวจสอบโค้ด (Compile-time ด้วย TypeScript) และช่วงเวลาที่โปรแกรมทำงานจริง (Runtime ด้วย Zod) ให้ชัดเจนก่อนเสมอ</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">ใช้ any</span>
+          <span class="trigger-tag">type ยังไง</span>
+          <span class="trigger-tag">interface vs type</span>
+          <span class="trigger-tag">generic</span>
+          <span class="trigger-tag">Zod</span>
+          <span class="trigger-tag">strict mode</span>
+          <span class="trigger-tag">runtime crash</span>
+          <span class="trigger-tag">type safe</span>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="info-block">
+          <div class="info-label">ฝั่ง TypeScript (ช่วงเวลาตรวจสอบโค้ด - Compile-time)</div>
+          <ul class="rules-list">
+            <li><span class="rule-desc">เลือกใช้ interface หรือ type สำหรับกำหนดโครงสร้างข้อมูลที่คงที่ (Static Shape)</span></li>
+            <li><span class="rule-desc">ใช้งาน Utility types อย่างมีประสิทธิภาพ เช่น Partial, Omit, Pick</span></li>
+            <li><span class="rule-desc">ใช้เทคนิค Discriminated Union ในการจัดการและแบ่งแยกสถานะต่าง ๆ</span></li>
+            <li><span class="rule-desc text-red">เด็ดขาด: ห้ามใช้งานชนิดข้อมูลประเภท <code>any</code> — ให้เลือกใช้ <code>unknown</code> ควบคู่กับระบบตรวจสอบเงื่อนไข (Type Guard) แทน</span></li>
+          </ul>
+        </div>
+        <div class="info-block">
+          <div class="info-label">ฝั่ง Zod (ช่วงเวลาโปรแกรมทำงานจริง - Runtime)</div>
+          <ul class="rules-list">
+            <li><span class="rule-desc">ต้องทำการตรวจสอบ (Validate) ข้อมูลที่ได้รับมาจากแหล่งข้อมูลภายนอก (External Source) อยู่เสมอ</span></li>
+            <li><span class="rule-desc">ใช้คำสั่ง safeParse สำหรับการตรวจสอบข้อมูลที่ป้อนมาจากผู้ใช้งาน</span></li>
+            <li><span class="rule-desc">ใช้คำสั่ง parse สำหรับการตรวจสอบตัวแปรสภาพแวดล้อมเพื่อสั่งให้ระบบหยุดทำงานทันทีหากพบข้อผิดพลาด (Crash Early)</span></li>
+            <li><span class="rule-desc">นำไปประยุกต์ใช้งานร่วมกับตัวจัดการเส้นทาง (Route Handler) ทุกตัวในระบบ</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/tsconfig-standard.md</td><td>แนวทางการตั้งค่าไฟล์ tsconfig และการเปิดใช้งานโหมดเข้มงวด (Strict Mode)</td></tr>
+            <tr><td>references/type-conventions.md</td><td>ข้อตกลงการเลือกใช้งานระหว่าง interface เทียบกับ type และระบบ utility types</td></tr>
+            <tr><td>references/zod-patterns.md</td><td>รูปแบบมาตรฐานการออกแบบโครงสร้างตรวจสอบข้อมูล (Schema Patterns) ของ Zod</td></tr>
+            <tr><td>templates/zod-schemas.md</td><td>ชุดเทมเพลตโครงสร้าง Zod Schema ที่พร้อมนำไปใช้งานได้ทันที</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ห้ามใช้ ANY</span><span class="rule-desc">ห้ามแนะนำหรือยินยอมให้ใช้ชนิดข้อมูลประเภท <code>any</code> ไม่ว่าในกรณีใด ๆ ทั้งสิ้น</span></li>
+          <li><span class="rule-key">ใช้ ZOD ตรวจสอบเสมอ</span><span class="rule-desc">ข้อมูลใด ๆ ที่รับเข้ามาจากภายนอกระบบ → จำเป็นต้องสร้างโครงสร้าง Zod Schema มารองรับและตรวจสอบเสมอ</span></li>
+          <li><span class="rule-key">แยกแยะสภาวะ</span><span class="rule-desc">ต้องระบุและแยกแยะให้ชัดเจนระหว่างปัญหาฝั่งตรวจสอบโค้ด (Compile-time) เทียบกับฝั่งโปรแกรมทำงานจริง (Runtime) ก่อนเสมอ</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 06 -->
+<section class="skill-section" id="s06">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-pink">06</div>
+      <div class="skill-meta">
+        <h2>api-routes — เส้นทาง API และการดึงข้อมูล (API & Data Fetching)</h2>
+        <div class="skill-id">06-api-routes</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">จัดการระบบควบคุมเส้นทางของ Next.js (Route Handlers), ระบบฟังก์ชันจัดการบนเซิร์ฟเวอร์ (Server Actions) และรูปแบบกระบวนการดึงข้อมูล โดยตัวจัดการเส้นทาง (Route Handler) จะทำหน้าที่เป็นเพียงตัวกลางหรือสะพานเชื่อมข้อมูล (Proxy/BFF) เท่านั้น — จะไม่มีการเขียนคำสั่งเรียกใช้ฐานข้อมูลโดยตรง ข้อมูลขาเข้าทุกชนิดต้องได้รับการตรวจสอบผ่าน Zod และทุกเส้นทางต้องมีระบบตรวจเช็คสิทธิ์ (Auth Check) ควบคู่ไปด้วย</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">API route</span>
+          <span class="trigger-tag">Route Handler</span>
+          <span class="trigger-tag">Server Action</span>
+          <span class="trigger-tag">validate input</span>
+          <span class="trigger-tag">error handling</span>
+          <span class="trigger-tag">loading state</span>
+          <span class="trigger-tag">waterfall</span>
+          <span class="trigger-tag">pagination</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">โครงสร้างสถาปัตยกรรม Route Handler ที่ถูกต้องตามมาตรฐาน</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">1. ตรวจสอบสิทธิ์</span><span class="rule-desc">เรียกใช้คำสั่ง <code>const session = await auth()</code> — เป็นบรรทัดแรกสุดก่อนเริ่มต้นกระบวนการอื่น ๆ</span></li>
+          <li><span class="rule-key">2. ตรวจสอบข้อมูล</span><span class="rule-desc">ใช้ Zod safeParse เพื่อเช็คความถูกต้องของข้อมูลขาเข้า — ส่งรหัสสถานะกลับเป็น 400 ทันทีหากไม่ผ่านเกณฑ์</span></li>
+          <li><span class="rule-key">3. ทำหน้าที่ทางผ่าน</span><span class="rule-desc">ส่งคำขอ (fetch) ต่อไปยัง API ภายนอกระบบ — ห้ามใส่คำสั่งเรียกใช้ฐานข้อมูลตรงนี้เป็นอันขาด</span></li>
+          <li><span class="rule-key">4. จัดการข้อผิดพลาด</span><span class="rule-desc">ครอบด้วยคำสั่ง try/catch พร้อมทั้งส่งรหัสสถานะ HTTP (HTTP Status) ที่ถูกต้องเหมาะสมกลับไปในทุกกรณี</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/route-handler-pattern.md</td><td>รูปแบบมาตรฐานการเขียนจัดการคำขอประเภท GET/POST/PATCH/DELETE</td></tr>
+            <tr><td>references/server-actions.md</td><td>แนวทางการใช้งาน Server Actions ร่วมกับการส่งข้อมูลผ่านฟอร์ม (Form Submission)</td></tr>
+            <tr><td>references/fetch-patterns.md</td><td>รูปแบบการดึงข้อมูลแบบขนาน (Parallel Fetch), ปัญหาคอขวดลำดับขั้น (Waterfall) และระบบ Suspense</td></tr>
+            <tr><td>bad-patterns/api-mistakes.md</td><td>ตัวอย่างข้อผิดพลาด: การละเลยการตรวจข้อมูล, การจัดการข้อผิดพลาดไม่ครบถ้วน หรือระบบเช็คสิทธิ์ขาดหายไป</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ตรวจสอบสิทธิ์ก่อน</span><span class="rule-desc">การตรวจเช็คสิทธิ์ (Auth Check) จะต้องถูกจัดวางไว้ในบรรทัดแรกสุดก่อนหน้าตรรกะโปรแกรมใด ๆ</span></li>
+          <li><span class="rule-key">ต้องใช้ ZOD เสมอ</span><span class="rule-desc">ทุกเส้นทางที่มีการส่งข้อมูลในรูปแบบ POST/PUT/PATCH จำเป็นต้องกำหนดและใช้ Zod Schema ร่วมด้วยเสมอ</span></li>
+          <li><span class="rule-key">เป็นทางผ่านเท่านั้น</span><span class="rule-desc">ตัวจัดการเส้นทางเป็นเพียง Proxy ทางผ่านข้อมูลเท่านั้น — ห้ามใส่ตรรกะทางธุรกิจลงไปโดยตรง (สอดคล้องกับรูปแบบโครงการที่จำกัดเฉพาะส่วนหน้า)</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 07 -->
+<section class="skill-section" id="s07">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-orange">07</div>
+      <div class="skill-meta">
+        <h2>state-data — การจัดการสถานะ (State Management)</h2>
+        <div class="skill-id">07-state-data</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">วิเคราะห์และตัดสินใจว่าสถานะ (State) แต่ละตัวควรถูกจัดเก็บและดูแลไว้ที่จุดใด โดยพิจารณาเลือกใช้งานระหว่าง useState / สถานะผ่านลิงก์ยูอาร์แอล (URL State) / Zustand / TanStack Query ซึ่งจะต้องประเมินผ่านตารางเกณฑ์การตัดสินใจ (Decision Matrix) ก่อนเสมอ ห้ามเลือกใช้เครื่องมือใด ๆ ก่อนผ่านเกณฑ์การประเมินนี้</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">state management</span>
+          <span class="trigger-tag">Zustand</span>
+          <span class="trigger-tag">TanStack Query</span>
+          <span class="trigger-tag">global state</span>
+          <span class="trigger-tag">จะเก็บ state ที่ไหน</span>
+          <span class="trigger-tag">URL state</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ตารางเกณฑ์การตัดสินใจ (Decision Matrix - จำเป็นต้องแสดงและอ้างอิงถึงก่อนเสมอ)</div>
+        <table class="files-table">
+          <thead><tr><th>ลักษณะและประเภทของข้อมูลสถานะ</th><th>เครื่องมือและแนวทางที่ควรเลือกใช้</th></tr></thead>
+          <tbody>
+            <tr><td>ชุดข้อมูลที่ได้รับมาจาก API หรือฝั่งเซิร์ฟเวอร์</td><td>เลือกใช้ระบบ TanStack Query (คำสั่ง useQuery, useMutation)</td></tr>
+            <tr><td>สถานะ UI ส่วนกลางที่มีการใช้งานร่วมกันข้ามองค์ประกอบหลาย ๆ ตัว</td><td>เลือกใช้คลังจัดเก็บส่วนกลางของ Zustand Store</td></tr>
+            <tr><td>สถานะ UI ทั่วไปที่ใช้งานเฉพาะตัวอยู่ภายในองค์ประกอบเดียว</td><td>เลือกใช้คำสั่งมาตรฐาน useState หรือ useReducer</td></tr>
+            <tr><td>ระบบกรองข้อมูล, เลขหน้าเพจ, ระบบเรียงลำดับ (ที่ต้องการให้ซิงค์ตรงกับ URL)</td><td>เลือกใช้ระบบค้นหาข้อมูลผ่านลิงก์ useSearchParams (URL State)</td></tr>
+            <tr><td>สถานะและการจัดการชุดข้อมูลภายในฟอร์มกรอกข้อมูล</td><td>เลือกใช้เครื่องมือ React Hook Form ร่วมกับโครงสร้าง Zod Resolver</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/decision-matrix.md</td><td>เป็นเอกสารสำคัญที่ต้องเข้ามาอ่านและอ้างอิงก่อนตอบคำถามหรือแก้ไขระบบทุกครั้ง</td></tr>
+            <tr><td>references/zustand-patterns.md</td><td>แนวทางการออกแบบ Zustand store, การใช้ระบบคัดกรองข้อมูล (Selector) และระบบจัดเก็บข้อมูลถาวร (Persist)</td></tr>
+            <tr><td>references/tanstack-query.md</td><td>แนวทางการใช้งานระบบจัดการสถานะฝั่งเซิร์ฟเวอร์ด้วย TanStack Query</td></tr>
+            <tr><td>bad-patterns/state-mistakes.md</td><td>ตัวอย่างข้อผิดพลาด: การออกแบบระบบซับซ้อนเกินจำเป็น (Over-engineering) หรือการนำสถานะเซิร์ฟเวอร์ไปเก็บไว้ในคลังข้อมูลส่วนกลาง</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ยึดตารางเกณฑ์ก่อน</span><span class="rule-desc">มีความจำเป็นต้องยกและแสดงตารางเกณฑ์การตัดสินใจ (Decision Matrix) ขึ้นมาอ้างอิงก่อนเสมอ</span></li>
+          <li><span class="rule-key">ห้ามเก็บข้อมูล API ในสโตร์</span><span class="rule-desc">เด็ดขาด: ห้ามนำคลังจัดเก็บส่วนกลางของ Zustand มาใช้สำหรับจัดเก็บข้อมูลที่ได้มาจากระบบ API ไม่ว่าในกรณีใดก็ตาม</span></li>
+          <li><span class="rule-key">ลดสถานะให้เหลือน้อยที่สุด</span><span class="rule-desc">กำหนดให้เกณฑ์เริ่มต้นคือ "ระบบไม่จำเป็นต้องพึ่งพาระบบจัดการสถานะส่วนกลาง" — จะพิจารณาเพิ่มเข้ามาเฉพาะเมื่อมีหลักฐานยืนยันความจำเป็นแน่ชัดแล้วเท่านั้น</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 08 -->
+<section class="skill-section" id="s08">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-indigo">08</div>
+      <div class="skill-meta">
+        <h2>auth-guard — การยืนยันตัวตนและการรักษาความปลอดภัย (Auth & Security)</h2>
+        <div class="skill-id">08-auth-guard</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">ดูแลระบบยืนยันสิทธิ์ตัวตนและสถาปัตยกรรมการรักษาความปลอดภัยแบบครอบคลุมทุกระดับชั้น: ระบบรหัสโทเค็น (JWT), ระบบรักษาความปลอดภัยของคุกกี้ (Cookie Security), เครื่องมือ NextAuth, การป้องกันเส้นทางด้วย Middleware (Middleware Auth Protection) รวมถึงการควบคุมการเข้าถึงตามบทบาทหน้าที่ (RBAC) ทำหน้าที่ในลักษณะของ "ผู้ทดสอบเจาะระบบ" — วิเคราะห์และจำลองมุมมองแบบผู้โจมตีก่อนนำเสนอวิธีแก้ไขความปลอดภัย</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">auth</span>
+          <span class="trigger-tag">JWT</span>
+          <span class="trigger-tag">cookie</span>
+          <span class="trigger-tag">NextAuth</span>
+          <span class="trigger-tag">middleware protect</span>
+          <span class="trigger-tag">CSRF</span>
+          <span class="trigger-tag">role</span>
+          <span class="trigger-tag">เช็คสิทธิ์</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ระดับชั้นการรักษาความปลอดภัย (Auth Layers - จำเป็นต้องมีการตรวจสอบอย่างครบถ้วนทุกระดับชั้น)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ระดับชั้นที่ 1</span><span class="rule-desc">ระบบ Middleware (ไฟล์ middleware.ts) — ทำหน้าที่คัดกรองและสกัดกั้นคำขอที่ไม่ได้รับอนุญาตทันทีก่อนที่จะเข้าถึงหน้าระบบหรือระบบ API</span></li>
+          <li><span class="rule-key">ระดับชั้นที่ 2</span><span class="rule-desc">เส้นทาง API (โฟลเดอร์ app/api/*/route.ts) — ต้องมีคำสั่งเช็คสิทธิ์ <code>auth()</code> อยู่ที่บรรทัดแรกสุดเสมอก่อนเริ่มประมวลผลตรรกะระบบ</span></li>
+          <li><span class="rule-key">ระดับชั้นที่ 3</span><span class="rule-desc">ส่วนประกอบและหน้าเพจฝั่งเซิร์ฟเวอร์ — มีการใช้ฟังก์ชัน <code>redirect()</code> สั่งเปลี่ยนหน้าทันทีหากตรวจไม่พบรอบเซสชัน (Session) ก่อนที่จะเริ่มการวาดหน้าเพจ (Render)</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">รายการตรวจสอบความปลอดภัย (Security Checklist)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">✓</span><span class="rule-desc">มีการเปิดใช้งานคุณสมบัติ httpOnly cookie — รหัสโทเค็น JWT ต้องไม่ถูกจัดเก็บไว้ในพื้นที่หน่วยความจำ localStorage</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">โฟลเดอร์หรือหน้าเพจที่ต้องการการปกป้อง (Protected Route) จะต้องได้รับการควบคุมผ่าน Middleware ทั้งหมด</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">ไฟล์ในส่วนของ API Route ทุกตัวในระบบต้องได้รับการบรรจุคำสั่งตรวจสอบ <code>auth()</code> ไว้อย่างครบถ้วน</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">คอมโพเนนต์ฝั่งเซิร์ฟเวอร์ (Server Component) ต้องมีตรรกะสั่งเปลี่ยนหน้าด้วยคำสั่ง <code>redirect()</code> ทันทีหากตรวจพบว่าไม่ผ่านสิทธิ์ก่อนเริ่มเรนเดอร์</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/auth-layers.md</td><td>เอกสารสำคัญที่จำเป็นต้องศึกษาและทำความเข้าใจก่อนเสมอ — รูปแบบโครงสร้างความปลอดภัยแบบเป็นระดับชั้น (Layered Auth Model)</td></tr>
+            <tr><td>references/cookie-security.md</td><td>ข้อกำหนดคุณสมบัติการตั้งค่าคุกกี้ และแนวทางการจัดเก็บรหัสโทเค็น JWT ที่ปลอดภัย</td></tr>
+            <tr><td>references/rbac.md</td><td>โครงสร้างการจัดการและควบคุมสิทธิ์ตามบทบาทและหน้าที่การทำงาน (Role, Permission, Access Control)</td></tr>
+            <tr><td>bad-patterns/auth-mistakes.md</td><td>ตัวอย่างรูปแบบที่อันตราย เช่น การเก็บ JWT ไว้ใน localStorage หรือการเขียนระบบความปลอดภัยไว้เฉพาะฝั่งผู้ใช้ (Client Side) เท่านั้น</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ปฏิเสธสิทธิ์ไว้ก่อน</span><span class="rule-desc">หากเกิดกรณีที่ไม่แน่ใจหรือเงื่อนไขไม่ชัดเจน ให้กำหนดให้ระบบทำการปฏิเสธการเข้าถึงสิทธิ์ (Deny) ไว้ก่อนเสมอ</span></li>
+          <li><span class="rule-key">ต้องปกป้องทุกชั้น</span><span class="rule-desc">ห้ามเขียนระบบรักษาความปลอดภัยหรือเช็คสิทธิ์ไว้เพียงระดับชั้นใดระดับชั้นหนึ่งเท่านั้น — ต้องวางระบบควบคุมไว้ให้ครบถ้วนทุกระดับชั้น</span></li>
+          <li><span class="rule-key">ห้ามใช้ LOCALSTORAGE</span><span class="rule-desc">เด็ดขาด: ห้ามแนะนำหรืออนุญาตให้มีการบันทึกหรือจัดเก็บรหัสโทเค็น JWT ไว้ในพื้นที่ localStorage ไม่ว่ากรณีใดก็ตาม</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 09 -->
+<section class="skill-section" id="s09">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-sky">09</div>
+      <div class="skill-meta">
+        <h2>env-config — การกำหนดค่าสภาพแวดล้อม (Environment Config)</h2>
+        <div class="skill-id">09-env-config</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">จัดการควบคุมตัวแปรสภาพแวดล้อม (Environment Variables) ให้มีความปลอดภัยและมีโครงสร้างประเภทข้อมูลที่มั่นคง (Type-safe) การเข้าถึงตัวแปรทุกชนิดในระบบจำเป็นต้องเรียกใช้งานผ่านไฟล์ส่วนกลาง lib/env.ts ที่ได้รับการตรวจสอบความถูกต้องผ่านสถาปัตยกรรม Zod แล้วเท่านั้น — ห้ามใช้คำสั่ง process.env โดยตรงในไฟล์อื่น ดำเนินการตรวจสอบเงื่อนไขตั้งแต่ขั้นตอนการเริ่มต้นระบบ (Startup) ไม่ใช่ตรวจเมื่อตอนระบบทำงานไปแล้ว</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">env</span>
+          <span class="trigger-tag">environment variable</span>
+          <span class="trigger-tag">NEXT_PUBLIC</span>
+          <span class="trigger-tag">.env</span>
+          <span class="trigger-tag">process.env</span>
+          <span class="trigger-tag">Zod env</span>
+          <span class="trigger-tag">secret</span>
+          <span class="trigger-tag">staging</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎระเบียบและข้อบังคับในการใช้คำนำหน้า NEXT_PUBLIC</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">เฉพาะฝั่งเซิร์ฟเวอร์</span><span class="rule-desc">ไม่ต้องระบุคำนำหน้าชื่อตัวแปร — มีสิทธิ์เรียกใช้งานได้เฉพาะภายในส่วนประกอบฝั่งเซิร์ฟเวอร์ (Server Component), ตัวจัดการเส้นทาง API หรือโฟลเดอร์ lib/ เท่านั้น</span></li>
+          <li><span class="rule-key">ปลอดภัยสำหรับเบราว์เซอร์</span><span class="rule-desc">ต้องใส่คำนำหน้าชื่อตัวแปรด้วย <code>NEXT_PUBLIC_</code> — ตัวแปรลักษณะนี้สามารถส่งออกไปยังฝั่งบราวเซอร์ได้ แต่ห้ามนำข้อมูลความลับระดับสูงมาใส่ไว้เด็ดขาด</span></li>
+          <li><span class="rule-desc text-red">กฎเหล็ก: ห้ามนำคำนำหน้า NEXT_PUBLIC_ มาใช้ร่วมกับรหัสกุญแจเข้าถึงระบบ (API Key), รหัสโทเค็นความปลอดภัย หรือรหัสผ่าน (Password) ทุกชนิด</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">โครงสร้างสถาปัตยกรรมไฟล์ lib/env.ts ที่ถูกต้องตามมาตรฐาน</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">1</span><span class="rule-desc">ใส่คำสั่งนำเข้าเครื่องมือ: import z from 'zod'</span></li>
+          <li><span class="rule-key">2</span><span class="rule-desc">เขียนโครงสร้างแผนผัง Schema เพื่อครอบคลุมและระบุชนิดข้อมูลของตัวแปรทุกตัวในระบบ</span></li>
+          <li><span class="rule-key">3</span><span class="rule-desc">สั่งรันคำสั่ง <code>export const env = schema.parse(process.env)</code> — เพื่อให้ระบบหยุดทำงานทันที (Crash Early) หากตรวจพบว่าตัวแปรที่จำเป็นขาดหายไป</span></li>
+          <li><span class="rule-key">4</span><span class="rule-desc">ไฟล์ใด ๆ ก็ตามที่ต้องการเข้าถึงค่าตัวแปรสภาพแวดล้อม จะต้องใช้คำสั่ง <code>import { env } from '@/lib/env'</code> เท่านั้น</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">เข้าผ่าน ENV.TS เท่านั้น</span><span class="rule-desc">การเรียกใช้หรือเข้าถึงตัวแปรสภาพแวดล้อมทุกชนิดต้องทำผ่านไฟล์ env.ts เท่านั้น — ห้ามเขียนคำสั่ง process.env กระจายตามไฟล์อื่นโดยตรง</span></li>
+          <li><span class="rule-key">ห้ามบันทึกไฟล์ ENV ลงคลังโค้ด</span><span class="rule-desc">ห้ามทำการอัปโหลดหรือ Commit ไฟล์จริงที่ระบุค่าความลับระบบ .env ลงสู่ระบบคลังจัดเก็บโค้ด (Git) อนุญาตเฉพาะไฟล์ตัวอย่าง .env.example ที่ไม่มีข้อมูลจริงระบุไว้เท่านั้น</span></li>
+          <li><span class="rule-key">ตรวจตั้งแต่เริ่มระบบ</span><span class="rule-desc">ให้ Zod ทำหน้าที่วิเคราะห์และตรวจสอบเงื่อนไขทันทีที่มีการโหลดโมดูลระบบขึ้นมา — เพราะการให้ระบบหยุดทำงานตั้งแต่เนิ่น ๆ (Crash Early) ย่อมดีกว่าการปล่อยให้ระบบไปเกิดความเสียหายระหว่างทำงาน (Crash Late)</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ 10 -->
+<section class="skill-section" id="s10">
+  <div class="skill-card">
+    <div class="skill-header">
+      <div class="skill-num tag c-teal">10</div>
+      <div class="skill-meta">
+        <h2>perf-bundle — การเพิ่มประสิทธิภาพและขนาดข้อมูล (Performance)</h2>
+        <div class="skill-id">10-perf-bundle</div>
+      </div>
+    </div>
+    <div class="skill-body">
+      <div class="info-block">
+        <div class="info-label">หน้าที่หลัก</div>
+        <div class="info-text">ดูแลและปรับแต่งระบบให้ทำงานได้อย่างมีประสิทธิภาพสูงสุด (Performance Optimization): ตรวจสอบขนาดรวมของชุดซอร์สโค้ด (Bundle Size), เทคนิคการแยกส่วนโค้ด (Code Splitting), ระบบดาวน์โหลดโมดูลแบบไดนามิก (Dynamic Imports), การเพิ่มประสิทธิภาพของไฟล์รูปภาพ, การประยุกต์ใช้คุณสมบัติ React Server Components, ระบบการโหลดฟอนต์อักษร ตลอดจนเกณฑ์ชี้วัดประสบการณ์ผู้ใช้งาน (Core Web Vitals) โดยจำเป็นต้องทำการวัดผลและระบุจุดที่เป็นคอขวด (Bottleneck) ให้ได้แน่ชัดก่อนเริ่มดำเนินการปรับแต่งเสมอ</div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">คำกระตุ้น (Trigger Words)</div>
+        <div class="trigger-list">
+          <span class="trigger-tag">bundle ใหญ่</span>
+          <span class="trigger-tag">โหลดช้า</span>
+          <span class="trigger-tag">dynamic import</span>
+          <span class="trigger-tag">lazy load</span>
+          <span class="trigger-tag">performance</span>
+          <span class="trigger-tag">LCP</span>
+          <span class="trigger-tag">Core Web Vitals</span>
+          <span class="trigger-tag">Lighthouse</span>
+        </div>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ประเภทของปัญหาคอขวด (จำเป็นต้องวิเคราะห์และระบุให้ได้ก่อนเริ่มกระบวนการปรับปรุง)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ขนาดไฟล์ใหญ่เกินไป</span><span class="rule-desc">เกิดจากการใช้คำสั่ง 'use client' ครอบคลุมพื้นที่กว้างเกินไป → ส่งผลให้ต้องส่งไฟล์ JavaScript ขนาดใหญ่ไปยังเบราว์เซอร์ผู้ใช้ — แนวทางแก้ไข: ให้เลือกใช้คำสั่ง dynamic() ควบคู่กับการแยกส่วนประกอบย่อยออกเป็นใบไม้ (Leaf Component)</span></li>
+          <li><span class="rule-key">ปัญหาค่า LCP ช้า</span><span class="rule-desc">เกิดจากไฟล์รูปภาพไม่ได้รับการบีบอัดหรือจัดการอย่างมีประสิทธิภาพ → แก้ไขโดยเลือกใช้คอมโพเนนต์ next/image พร้อมระบุคุณสมบัติ priority สำหรับรูปภาพหลักของหน้า (Hero Image)</span></li>
+          <li><span class="rule-key">ปัญหาการขยับของเลย์เอาต์ (CLS)</span><span class="rule-desc">เกิดจากระบบการโหลดฟอนต์อักษรที่ไม่มีโครงสร้างรองรับสถานะระหว่างรอ (Fallback) → แก้ไขโดยเรียกใช้งานระบบ next/font พร้อมระบุรูปแบบคุณสมบัติ display: 'swap'</span></li>
+          <li><span class="rule-key">ปัญหาเรนเดอร์ซ้ำซ้อน</span><span class="rule-desc">เกิดจากการขาดหายไปของฟังก์ชันจำคำสั่งชี้เฉพาะ (useCallback) → แนวทางแก้ไข: ให้กลับไปเรียกใช้งานทักษะลำดับที่ 04 เพื่อแก้ตรรกะให้ถูกต้องก่อน แล้วจึงค่อยกลับมาปรับปรุงขนาดไฟล์ข้อมูลในภายหลัง</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">รายการตรวจสอบเพื่อประสิทธิภาพสูงสุด (Performance Checklist)</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">✓</span><span class="rule-desc">การใช้คำสั่ง 'use client' จะต้องถูกจำกัดและจัดวางไว้เฉพาะในส่วนประกอบปลายทาง (Leaf Component) ที่มีความจำเป็นต้องใช้งานจริง ๆ เท่านั้น</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">ส่วนประกอบที่มีขนาดใหญ่หรือประมวลผลหนัก (เช่น แผนภูมิ Chart, โปรแกรมแก้ไขเนื้อหา Editor, ระบบแผนที่ Map) ต้องเลือกใช้ฟังก์ชัน dynamic() ควบคู่กับการแสดงโครงร่างรอโหลด (Loading Skeleton)</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">องค์ประกอบที่เป็นรูปภาพทุกจุดในระบบต้องเปลี่ยนมาใช้งานคอมโพเนนต์ next/image ทั้งหมด — ห้ามใช้งานแท็กอิมเมจแบบมาตรฐาน <code>&lt;img&gt;</code> ทั่วไป</span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">นำระบบ next/font เข้ามาใช้ทดแทนรูปแบบการเรียกใช้ฟอนต์ผ่านคำสั่ง @import หรือแท็กการเชื่อมโยงข้อมูลแบบเก่า <code>&lt;link&gt;</code></span></li>
+          <li><span class="rule-key">✓</span><span class="rule-desc">ปรับเปลี่ยนรูปแบบการเขียนดึงข้อมูลมาเป็นกระบวนการแบบขนาน (Parallel Fetch) แทนรูปแบบการเขียนรอคำสั่งแบบเรียงลำดับไปทีละรายการ (Sequential Await)</span></li>
+        </ul>
+      </div>
+      <div class="info-block">
+        <div class="info-label">ไฟล์อ้างอิง</div>
+        <table class="files-table">
+          <thead><tr><th>ชื่อไฟล์</th><th>วัตถุประสงค์การใช้งาน</th></tr></thead>
+          <tbody>
+            <tr><td>references/rsc-optimization.md</td><td>ใช้ศึกษาในกรณีที่พบปัญหามีการใช้ use client ครอบคลุมพื้นที่กว้างเกินไป หรือต้องการเรียนรู้การวางเส้นแบ่งขอบเขตโครงสร้าง RSC (RSC Boundary)</td></tr>
+            <tr><td>references/bundle-splitting.md</td><td>แนวทางการแบ่งไฟล์และแยกโค้ดซอร์ส รวมถึงการเขียนคำสั่งดาวน์โหลดโมดูลแบบไดนามิก (Dynamic Import)</td></tr>
+            <tr><td>references/image-font.md</td><td>คู่มือและแนวทางการปรับปรุงระบบผ่านการใช้คอมโพเนนต์ next/image, next/font และการเพิ่มคะแนน LCP</td></tr>
+            <tr><td>bad-patterns/performance-mistakes.md</td><td>ตัวอย่างรูปแบบที่ผิดพลาด เช่น การระบุคุณสมบัติ use client ผิดตำแหน่ง หรือการเลือกใช้แท็กไฟล์ภาพแบบทั่วไป</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-block">
+        <div class="info-label">กฎสำคัญ</div>
+        <ul class="rules-list">
+          <li><span class="rule-key">ต้องวัดผลก่อนเสมอ</span><span class="rule-desc">จำเป็นต้องสอบถามและระบุจุดที่เป็นคอขวดที่แท้จริงให้พบก่อนเสมอ — ห้ามลงมือปรับแต่งระบบโดยอ้างอิงจากความรู้สึกหรือข้อสมมติฐานเด็ดขาด</span></li>
+          <li><span class="rule-key">ยึดค่าเซิร์ฟเวอร์เริ่มต้น</span><span class="rule-desc">กำหนดให้ระบบคอมโพเนนต์ฝั่งเซิร์ฟเวอร์ (Server Component) เป็นค่าเริ่มต้นของระบบเสมอ — จะพิจารณาใส่คำสั่ง 'use client' เฉพาะเมื่อมีความจำเป็นจริง ๆ เท่านั้น</span></li>
+          <li><span class="rule-key">ต้องแสดงผลเปรียบเทียบ</span><span class="rule-desc">ในการปรับปรุงประสิทธิภาพทุกครั้ง จำเป็นต้องแสดงซอร์สโค้ดในรูปแบบก่อนทำและหลังทำ (Before/After Code) ควบคู่กับรายงานการประเมินผลกระทบที่จะเกิดขึ้นกับระบบให้ชัดเจน</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+// จัดการสถานะเมนูฝั่งข้างให้ทำงานสอดคล้องตามตำแหน่งการเลื่อนหน้าจอ (Active Nav on Scroll)
+const sections = document.querySelectorAll('.skill-section')
+const navItems = document.querySelectorAll('.nav-item')
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navItems.forEach(n => n.classList.remove('active'))
+      const active = document.querySelector(`.nav-item[href="#${e.target.id}"]`)
+      if (active) active.classList.add('active')
+    }
+  })
+}, { threshold: 0.3 })
+sections.forEach(s => observer.observe(s))
+</script>
+</body>
+</html>
